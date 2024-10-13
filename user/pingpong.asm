@@ -68,7 +68,7 @@ int main(){
         wait(0);
   74:	4501                	li	a0,0
   76:	2ac000ef          	jal	322 <wait>
-        close(pipeLine[1]);
+        close(pipeLine[1]); 
   7a:	fec42503          	lw	a0,-20(s0)
   7e:	2c4000ef          	jal	342 <close>
         read(pipeLine[0], receiveBuff, 5);
