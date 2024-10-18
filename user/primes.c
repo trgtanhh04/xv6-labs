@@ -2,56 +2,58 @@
 #include "kernel/stat.h"
 #include "user/user.h"
 
-void 
-filter(int lpipe[])
-{
-  int rpipe[2];
-  pipe(rpipe);
+void filterPrimes(int inputPipe[2]) {
+    int currentPrime;
 
-  int primes[50];
-  int cnt = 0;
-  char buf[1];
+    close(inputPipe[1]);
 
-  while ((read(lpipe[0], buf, sizeof(buf))) != 0) {
-    primes[cnt++] = buf[0];
-  }
-  close(lpipe[0]);
-
-  if (cnt == 0) return;
-  int first = primes[0];
-  printf("prime %d\n", first);
-
-  for (int i = 1; i < cnt; i++) {
-    if (primes[i] % first != 0) {
-      char p = primes[i];
-      write(rpipe[1], &p, 1);
+    if (read(inputPipe[0], &currentPrime, sizeof(currentPrime)) == 0) {
+        close(inputPipe[0]);
+        exit(0);
     }
-  }
-  close(rpipe[1]);
 
-  int pid = fork();
-  if (pid == 0) {
-    //child
-    filter(rpipe);
-  }
+    printf("prime %d\n", currentPrime);
+
+    // Tạo ống dẫn cho các số nguyên tố tiếp theo
+    int nextPipe[2];
+    pipe(nextPipe);
+
+    // Tạo quy trình con
+    if (fork() == 0) {
+        close(inputPipe[0]); 
+        close(nextPipe[1]);
+        filterPrimes(nextPipe);
+    } else {
+        close(nextPipe[0]); 
+
+        int number;
+        while (read(inputPipe[0], &number, sizeof(number)) > 0) {
+            if (number % currentPrime != 0) {
+                write(nextPipe[1], &number, sizeof(number));
+            }
+        }
+        close(inputPipe[0]);
+        close(nextPipe[1]);
+        wait(0); 
+    }
 }
 
-int
-main()
-{
-  int lpipe[2];
+int main() {
+    int initialPipe[2];
+    pipe(initialPipe); 
 
-  pipe(lpipe);
+    if (fork() == 0) {
+        filterPrimes(initialPipe);
+    } else {
+        close(initialPipe[0]);
 
-  for (int i = 2; i <= 35; i++) {
-    char p = i;
-    write(lpipe[1], &p, 1);
-  }
-  close(lpipe[1]);
+        for (int i = 2; i <= 280; i++) {
+            write(initialPipe[1], &i, sizeof(i)); 
+        }
 
-  filter(lpipe);
+        close(initialPipe[1]); 
+        wait(0); 
+    }
 
-  wait((int *) 0);
-
-  exit(0);
+    exit(0); 
 }
